@@ -493,7 +493,7 @@ $('gcType').addEventListener('click',e=>{const b=e.target.closest('button');if(!
 ['h','t'].forEach(k=>$(k).addEventListener('input',()=>{$('recapList').innerHTML=recap().map(([a,v])=>`<li><span>${a}</span><b>${v}</b></li>`).join('')}));
 $('ralSearch').addEventListener('input',e=>{S.q=e.target.value;renderGrid();document.querySelectorAll('#fams button').forEach(x=>x.classList.toggle('on',!S.q&&x.dataset.f===S.fam))});
 $('form').addEventListener('submit',e=>e.preventDefault());
-const FS_URL='https://formsubmit.co/contact@manu-factura.com';
+const FS_URL='https://formsubmit.co/camille.peron@manu-factura.com';
 function canvasFile(cv,name){return new Promise(res=>{try{cv.toBlob(b=>{if(!b)return res(null);try{const dt=new DataTransfer();dt.items.add(new File([b],name,{type:'image/jpeg'}));const i=document.createElement('input');i.type='file';i.name=name.replace(/\.jpg$/,'');i.files=dt.files;res(i)}catch(_){res(null)}},'image/jpeg',0.85)}catch(_){res(null)}})}
 $('send').addEventListener('click',async()=>{
   $('err').textContent='';$('done').classList.remove('show');
