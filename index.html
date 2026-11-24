@@ -72,6 +72,9 @@ h1{font-size:32px;font-weight:300;letter-spacing:0;margin:18px 0 6px;line-height
 .fields label{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:5px}
 .fields label.full{grid-column:1/-1}
 .fields input,.fields textarea{min-width:0;width:100%;border:1.5px solid var(--line);border-radius:12px;padding:11px 12px;font:inherit;font-size:15px;color:var(--ink);outline:none}
+.upl{position:relative;display:block;border:1.5px dashed var(--line);border-radius:12px;padding:14px 12px;text-align:center;color:var(--ink);font-size:15px;cursor:pointer}
+.upl input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;border:0;padding:0}
+.flist{font-size:12px;color:var(--muted);line-height:1.5}
 .fields input:focus,.fields textarea:focus{border-color:var(--ink)}
 .recap{background:var(--soft);border-radius:20px;padding:20px;margin-top:6px}
 .recap ul{list-style:none;padding:0;margin:0 0 14px}
@@ -174,7 +177,12 @@ h1{font-size:32px;font-weight:300;letter-spacing:0;margin:18px 0 6px;line-height
         <label id="tremieLabel">Trémie (cm)<input id="t" placeholder="ex. 120 × 120"></label>
         <label>Nom<input id="nom" autocomplete="name"></label>
         <label>Ville<input id="ville" autocomplete="address-level2"></label>
-        <label class="full">E-mail ou téléphone<input id="contact" autocomplete="email"></label>
+        <label>E-mail<input id="contact" type="email" autocomplete="email" inputmode="email"></label>
+        <label>Téléphone<input id="tel" type="tel" autocomplete="tel" inputmode="tel" placeholder="06 12 34 56 78"></label>
+        <label class="full">Photos ou plans (facultatif)
+          <span class="upl"><input id="files" type="file" multiple accept="image/*,.pdf,application/pdf"><span id="filesBtn">＋ Ajouter des photos ou plans</span></span>
+          <small id="filesList" class="flist">Photos de la pièce, de la trémie, plans… (JPG, PNG ou PDF)</small>
+        </label>
         <label class="full">Un mot sur votre projet (facultatif)<textarea id="msg" rows="3"></textarea></label>
       </form>
     </div>
@@ -471,7 +479,7 @@ function render(){
   $('price').innerHTML=`À partir de ${S.model==='es01'?'14 900':'7 700'} € TTC<small>Pose comprise*. Prix final après étude gratuite, selon la hauteur, les finitions et les options.<br>*TVA à 10 % pour les logements de plus de 2 ans, en France métropolitaine.</small>`;
 }
 function summary(){
-  return 'Ma configuration Manufactura\n'+recap().map(([k,v])=>`- ${k} : ${v}`).join('\n')+`\n\nNom : ${$('nom').value}\nVille : ${$('ville').value}\nContact : ${$('contact').value}\n${$('msg').value?'Message : '+$('msg').value:''}`;
+  return 'Ma configuration Manufactura\n'+recap().map(([k,v])=>`- ${k} : ${v}`).join('\n')+`\n\nNom : ${$('nom').value}\nVille : ${$('ville').value}\nE-mail : ${$('contact').value}\nTéléphone : ${$('tel').value}\n${$('msg').value?'Message : '+$('msg').value:''}`;
 }
 $('photo').addEventListener('click',()=>{if(S.view==='photo')return;$('zoomImg').src=IMG['plan'+(S.model==='es01'?'01':'02')+({open:'o',closed:'c',gc:'g'}[S.mode])+(S.model==='es02'&&S.mode==='closed'&&S.gc&&S.gct!=='fixe'?'g':'')];$('zoom').classList.add('show')});
 document.addEventListener('click',e=>{if(e.target.id==='zoomClose'){$('zoom').classList.remove('show');return}
@@ -493,18 +501,21 @@ $('gcType').addEventListener('click',e=>{const b=e.target.closest('button');if(!
 ['h','t'].forEach(k=>$(k).addEventListener('input',()=>{$('recapList').innerHTML=recap().map(([a,v])=>`<li><span>${a}</span><b>${v}</b></li>`).join('')}));
 $('ralSearch').addEventListener('input',e=>{S.q=e.target.value;renderGrid();document.querySelectorAll('#fams button').forEach(x=>x.classList.toggle('on',!S.q&&x.dataset.f===S.fam))});
 $('form').addEventListener('submit',e=>e.preventDefault());
+$('files').addEventListener('change',e=>{const n=e.target.files.length;$('filesBtn').textContent=n?n+' fichier'+(n>1?'s':'')+' sélectionné'+(n>1?'s':''):'＋ Ajouter des photos ou plans';$('filesList').textContent=n?[...e.target.files].slice(0,8).map(f=>f.name).join(' · ')+(n>8?' (8 fichiers maximum)':''):'Photos de la pièce, de la trémie, plans… (JPG, PNG ou PDF)'});
 const FS_URL='https://formsubmit.co/camilleoperon@gmail.com';
 function canvasFile(cv,name){return new Promise(res=>{try{cv.toBlob(b=>{if(!b)return res(null);try{const dt=new DataTransfer();dt.items.add(new File([b],name,{type:'image/jpeg'}));const i=document.createElement('input');i.type='file';i.name=name.replace(/\.jpg$/,'');i.files=dt.files;res(i)}catch(_){res(null)}},'image/jpeg',0.85)}catch(_){res(null)}})}
 $('send').addEventListener('click',async()=>{
   $('err').textContent='';$('done').classList.remove('show');
-  const c=$('contact').value.trim();
-  if(!c){$('err').textContent='Indiquez un e-mail ou un téléphone pour recevoir votre étude.';$('contact').focus();return}
+  const c=$('contact').value.trim(),tel=$('tel').value.trim();
+  if(!c&&!tel){$('err').textContent='Indiquez votre e-mail ou votre téléphone pour recevoir votre étude.';$('contact').focus();return}
+  const upl=[...$('files').files],big=upl.filter(f=>!/^image\//.test(f.type)).reduce((n,f)=>n+f.size,0);
+  if(big>7e6){$('err').textContent='Vos plans PDF dépassent 7 Mo au total : envoyez-en moins, ou joignez-les en répondant à notre e-mail.';return}
   const btn=$('send');btn.disabled=true;btn.textContent='Envoi en cours…';
   const fd=new FormData();
   const add=(n,v)=>fd.append(n,v||'');
   add('_subject','Configurateur – '+(S.model==='es01'?'ES-01':'ES-02')+' – '+($('nom').value.trim()||'nouvelle demande'));
   add('_captcha','false');add('_template','table');add('_cc','camille.peron@manu-factura.com');
-  add('Nom',$('nom').value);add('Ville',$('ville').value);add('Contact',c);
+  add('Nom',$('nom').value);add('Ville',$('ville').value);add('E-mail client',c);add('Téléphone',tel);
   if(/@/.test(c))add('email',c);
   recap().forEach(([k,v])=>add(k,v));
   add('Message',$('msg').value);
@@ -512,6 +523,9 @@ $('send').addEventListener('click',async()=>{
   const blob=cv=>new Promise(r=>{try{cv.toBlob(r,'image/jpeg',0.85)}catch(_){r(null)}});
   if(window.lastCutSrc&&window.lastCutSrc.ok){const b=await blob($('photo'));if(b)fd.append('attachment',b,'configuration.jpg')}
   if(T.img&&T.cut){const b=await blob($('tryCv'));if(b)fd.append('attachment2',b,'photo-chez-moi.jpg')}
+  const shrink=f=>new Promise(res=>{const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const k=Math.min(1,1600/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>res(b||f),'image/jpeg',0.8)};im.onerror=()=>{URL.revokeObjectURL(u);res(f)};im.src=u});
+  for(let i=0;i<upl.length&&i<8;i++){const f=upl[i];const isImg=/^image\//.test(f.type);const b=isImg?await shrink(f):f;fd.append('fichier'+(i+1),b,isImg?f.name.replace(/\.[^.]+$/,'')+'.jpg':f.name)}
+  add('Fichiers joints par le client',upl.length?upl.slice(0,8).map(f=>f.name).join(', '):'aucun');
   const done=()=>{btn.disabled=false;btn.textContent='Recevoir mon étude gratuite'};
   const fail=msg=>{done();const href='mailto:camille.peron@manu-factura.com?subject='+encodeURIComponent('Demande d’étude – configurateur')+'&body='+encodeURIComponent(summary());$('err').innerHTML='L’envoi n’a pas abouti'+(msg?' ('+msg+')':'')+'. <a href="'+href+'">Envoyez-nous votre configuration par e-mail</a>.'};
   try{
